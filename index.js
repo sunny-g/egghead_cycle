@@ -4,33 +4,28 @@
     subscribes should be as far away from the rest of the app as possible (and part of the framework)
  */
 
-const {h, h1, span, makeDOMDriver} = CycleDOM;
+const {h, h1, span, label, input, hr, div, makeDOMDriver} = CycleDOM;
 
 /********************************************************************************/
 // app-specific logic
 /********************************************************************************/
+// main always returns an object of sinks
 function main(sources) {
-  const mouseover$ = sources.DOM.select('span.foo').events('mouseover');
-  // take a source (input) and create an app-specific sink for each source 
-  const sinks = {
-    DOM: mouseover$
-      .startWith(null)
-      .flatMapLatest(() => {
-        return Rx.Observable.timer(0, 1000)
-          .map(i => {
-            return h1([
-              span({className: 'foo'}, [
-                `seconds elapsed ${i}`
-              ])
-            ])
-          })
-      }),
-
-    console: Rx.Observable.timer(0, 2000)
-      .map(i => i * 2)
-  };
-
-  return sinks;
+  const inputEv$ = sources.DOM.select('.field').events('input');
+  const name$ = inputEv$
+    .map(ev => ev.target.value)
+    .startWith('<user>');
+  
+  return {
+    DOM: name$.map(name =>
+      div([
+        label('Name'),
+        input('.field', {type: 'text'}),
+        hr(),
+        h1(`Hello ${name}!`)
+      ])
+    )
+  }
 }
 
 /********************************************************************************/
@@ -39,11 +34,6 @@ function main(sources) {
 // driver:  does the effect of the sink, returns the sources
 // source:  input, read effects our app receives (clicks, localStorage)
 // sink:    output, write effects our app produces (DOM output, network requests)
-
-function consoleDriver(sink$) {
-  // take some sink and do the effect
-  return sink$.subscribe(msg => console.log(msg));
-}
 
 /********************************************************************************/
 // cycle.js core code
@@ -67,7 +57,6 @@ function consoleDriver(sink$) {
 
 const drivers = {
   DOM: makeDOMDriver('#app'),
-  console: consoleDriver
 }
 
 // actually start the app
