@@ -4,27 +4,41 @@
     subscribes should be as far away from the rest of the app as possible (and part of the framework)
  */
 
-const {h, h1, span, label, input, hr, div, makeDOMDriver} = CycleDOM;
+const {button, p, label, div, makeDOMDriver} = CycleDOM;
 
 /********************************************************************************/
 // app-specific logic
 /********************************************************************************/
-// main always returns an object of sinks
+/* main always returns an object of sinks
+  ** recommend always making the DOM sink an observable with just one event
+    - a static virtual-dom tree (so we can see something on the DOM)
+    - later, figure out how to get user interactions through read effects from sources
+ */
 function main(sources) {
-  const inputEv$ = sources.DOM.select('.field').events('input');
-  const name$ = inputEv$
-    .map(ev => ev.target.value)
-    .startWith('<user>');
-  
+  const incrementClick$ = sources.DOM.select('#increment').events('click');
+  const decrementClick$ = sources.DOM.select('#decrement').events('click');
+
+  const incrementAction$ = incrementClick$.map(_ => +1);
+  const decrementAction$ = decrementClick$.map(_ => -1);
+
+  const number$ = Rx.Observable.merge(incrementAction$, decrementAction$)
+    .scan((total, num) => {
+      console.log(total, num);
+      return total + num
+    })
+    .startWith(0);
+
   return {
-    DOM: name$.map(name =>
+    DOM: number$.map(number => (
+    // DOM: Rx.Observable.of(
       div([
-        label('Name'),
-        input('.field', {type: 'text'}),
-        hr(),
-        h1(`Hello ${name}!`)
+        button('#increment', 'increment'),
+        button('#decrement', 'decrement'),
+        p([
+          label(String(number))
+        ])
       ])
-    )
+    ))
   }
 }
 
