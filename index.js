@@ -5,12 +5,27 @@
 
  */
 
-// logic (functional)
-Rx.Observable.timer(0, 1000)
-  .map((i) => `seconds elapsed ${i}`)
+// logic
+function main() {
+  return Rx.Observable.timer(0, 1000)
+    .map((i) => `seconds elapsed ${i}`)
+}
 
-// effects (imperative, things that change external world)
-  .subscribe(text => {
+// effects
+function DOMEffect(text$) {
+  return text$.subscribe(text => {
     const container = document.querySelector('#app');
     container.textContent = text;
   });
+}
+
+function consoleEffect(msg$) {
+  return msg$.subscribe(msg => console.log(msg));
+}
+
+// hooks up the logic to the effects
+
+// like a kitchen sink where "water comes into the sink and is drained to some effect" 
+const sink = main();
+DOMEffect(sink);
+consoleEffect(sink);
