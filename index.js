@@ -4,28 +4,34 @@
     subscribes should be as far away from the rest of the app as possible (and part of the framework)
  */
 
+function h(tagName, children) {
+  return { tagName, children };
+}
+
+function h1(children) {
+  return h('h1', children);
+}
+
+function span(children) {
+  return h('span', children);
+}
+
 /********************************************************************************/
 // app-specific logic
 /********************************************************************************/
 function main(sources) {
   // take a source (input) and create an app-specific sink for each source 
   const sinks = {
-    DOM: sources.DOM
+    DOM: sources.DOM.selectEvents('span', 'mouseover')
       .startWith(null)
       .flatMapLatest(() => {
         return Rx.Observable.timer(0, 1000)
           .map(i => {
-            return {
-              tagName: 'H1',
-              children: [
-                {
-                  tagName: 'SPAN',
-                  children: [
-                    `seconds elapsed ${i}`
-                  ]     
-                }
-              ]
-            }
+            return h1([
+              span([
+                `seconds elapsed ${i}`
+              ])
+            ])
           })
       }),
 
@@ -66,7 +72,12 @@ function DOMDriver(sink$) {
   });
 
   // create and return a source of anything that originates from the DOM
-  const DOMSource = Rx.Observable.fromEvent(document, 'click');
+  const DOMSource = {
+    selectEvents: function(tagName, eventType) {
+      return Rx.Observable.fromEvent(document, eventType)
+        .filter(ev => ev.target.tagName === tagName.toUpperCase());
+    }
+  }
   return DOMSource;
 }
 
