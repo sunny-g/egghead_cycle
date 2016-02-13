@@ -4,31 +4,22 @@
     subscribes should be as far away from the rest of the app as possible (and part of the framework)
  */
 
-function h(tagName, children) {
-  return { tagName, children };
-}
-
-function h1(children) {
-  return h('h1', children);
-}
-
-function span(children) {
-  return h('span', children);
-}
+const {h, h1, span, makeDOMDriver} = CycleDOM;
 
 /********************************************************************************/
 // app-specific logic
 /********************************************************************************/
 function main(sources) {
+  const mouseover$ = sources.DOM.select('span.foo').events('mouseover');
   // take a source (input) and create an app-specific sink for each source 
   const sinks = {
-    DOM: sources.DOM.selectEvents('span', 'mouseover')
+    DOM: mouseover$
       .startWith(null)
       .flatMapLatest(() => {
         return Rx.Observable.timer(0, 1000)
           .map(i => {
             return h1([
-              span([
+              span({className: 'foo'}, [
                 `seconds elapsed ${i}`
               ])
             ])
@@ -48,40 +39,6 @@ function main(sources) {
 // driver:  does the effect of the sink, returns the sources
 // source:  input, read effects our app receives (clicks, localStorage)
 // sink:    output, write effects our app produces (DOM output, network requests)
-
-// takes in a sink, does the write effect, produces a source of read effects
-function makeDOMDriver(mountSelector) {
-  return function DOMDriver(sink$) {
-    // take some sink and do the write effect
-    function createElement(obj) {
-      const element = document.createElement(obj.tagName);
-      obj.children
-        .filter(child => typeof child === 'object')
-        .map(createElement)
-        .forEach(child => element.appendChild(child));
-      obj.children
-        .filter(child => typeof child === 'string')
-        .forEach(child => element.innerHTML += child);
-      return element;
-    }
-
-    sink$.subscribe(obj => {
-      const container = document.querySelector(mountSelector);
-      container.innerHTML = '';
-      const element = createElement(obj);
-      container.appendChild(element);
-    });
-
-    // create and return a source of anything that originates from the DOM
-    const DOMSource = {
-      selectEvents: function(tagName, eventType) {
-        return Rx.Observable.fromEvent(document, eventType)
-          .filter(ev => ev.target.tagName === tagName.toUpperCase());
-      }
-    }
-    return DOMSource;
-  }
-}
 
 function consoleDriver(sink$) {
   // take some sink and do the effect
