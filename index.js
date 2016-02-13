@@ -50,35 +50,37 @@ function main(sources) {
 // sink:    output, write effects our app produces (DOM output, network requests)
 
 // takes in a sink, does the write effect, produces a source of read effects
-function DOMDriver(sink$) {
-  // take some sink and do the write effect
-  function createElement(obj) {
-    const element = document.createElement(obj.tagName);
-    obj.children
-      .filter(child => typeof child === 'object')
-      .map(createElement)
-      .forEach(child => element.appendChild(child));
-    obj.children
-      .filter(child => typeof child === 'string')
-      .forEach(child => element.innerHTML += child);
-    return element;
-  }
-
-  sink$.subscribe(obj => {
-    const container = document.querySelector('#app');
-    container.innerHTML = '';
-    const element = createElement(obj);
-    container.appendChild(element);
-  });
-
-  // create and return a source of anything that originates from the DOM
-  const DOMSource = {
-    selectEvents: function(tagName, eventType) {
-      return Rx.Observable.fromEvent(document, eventType)
-        .filter(ev => ev.target.tagName === tagName.toUpperCase());
+function makeDOMDriver(mountSelector) {
+  return function DOMDriver(sink$) {
+    // take some sink and do the write effect
+    function createElement(obj) {
+      const element = document.createElement(obj.tagName);
+      obj.children
+        .filter(child => typeof child === 'object')
+        .map(createElement)
+        .forEach(child => element.appendChild(child));
+      obj.children
+        .filter(child => typeof child === 'string')
+        .forEach(child => element.innerHTML += child);
+      return element;
     }
+
+    sink$.subscribe(obj => {
+      const container = document.querySelector(mountSelector);
+      container.innerHTML = '';
+      const element = createElement(obj);
+      container.appendChild(element);
+    });
+
+    // create and return a source of anything that originates from the DOM
+    const DOMSource = {
+      selectEvents: function(tagName, eventType) {
+        return Rx.Observable.fromEvent(document, eventType)
+          .filter(ev => ev.target.tagName === tagName.toUpperCase());
+      }
+    }
+    return DOMSource;
   }
-  return DOMSource;
 }
 
 function consoleDriver(sink$) {
@@ -107,8 +109,8 @@ function consoleDriver(sink$) {
  */
 
 const drivers = {
-  DOM: DOMDriver,
-  // console: consoleDriver
+  DOM: makeDOMDriver('#app'),
+  console: consoleDriver
 }
 
 // actually start the app
